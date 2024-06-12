@@ -42,11 +42,24 @@ Dependencies:
 - `git` (optional)
 - `less` (optional)
 
+
 ```
 $ wget -O gnome-shell-extension-installer "https://github.com/brunelli/gnome-shell-extension-installer/raw/master/gnome-shell-extension-installer"
 $ chmod +x gnome-shell-extension-installer
 $ mv gnome-shell-extension-installer /usr/bin/
 ```
+
+### BSDs (Tested on FreeBSD)
+
+Additional Dependenies:
+- `gsed`
+
+```
+$ fetch -O gnome-shell-extension-installer "https://github.com/brunelli/gnome-shell-extension-installer/raw/master/gnome-shell-extension-installer"
+$ chmod +x gnome-shell-extension-installer
+$ mv gnome-shell-extension-installer /usr/local/bin/
+```
+
 
 ### Arch Linux
 
