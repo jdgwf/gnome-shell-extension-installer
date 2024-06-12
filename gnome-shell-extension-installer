@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
    #################################################################
    #                                                               #
-   #             GNOME Shell Extension Installer 1.6.2             #
+   #             GNOME Shell Extension Installer 1.7.0             #
    #                                                               #
    #       Copyright (C) 2017 Ian Brunelli <ian@brunelli.me>       #
    #       Licensed under the GNU General Public License 2.0       #
@@ -10,6 +10,24 @@
    #  https://github.com/brunelli/gnome-shell-extension-installer  #
    #                                                               #
    #################################################################
+
+SED_COMMAND='sed'
+
+SED_VERSION=$( sed --version  2> /dev/null )
+
+# BSDs will need the gsed (GNU sed) installed to parse regex as intended
+if [[ -z $SED_VERSION ]]; then
+  SED_COMMAND='gsed'
+  SED_VERSION=$( gsed --version  2> /dev/null )
+  if [[ -z $SED_VERSION ]]; then
+    echo -e "\e[0;33mWARNING\e[0m: You'll need to install gsed on this system."
+    echo "BSD sed does not parse the regex equally"
+    exit
+  fi
+fi
+
+
+
 
 usage_guide() {
   cat << EOF
@@ -43,7 +61,7 @@ enable_extension() {
     echo "[$1] Extension enabled"
   else
     EXTL_OUTPUT=$( gnome-shell-extension-tool --enable-extension="$2" 2>&1 )
-    sed -n "s/^'.*' is\( now\)\?\(.*\)\.$/[$1] Extension\2/p" <<< "$EXTL_OUTPUT"
+    $SED_COMMAND -n "s/^'.*' is\( now\)\?\(.*\)\.$/[$1] Extension\2/p" <<< "$EXTL_OUTPUT"
   fi
 }
 
@@ -78,11 +96,11 @@ move_file() {
 }
 
 download_version() {
-  DOWNLOAD_TARGET=$( sed "s/^.*$2\": {\"pk[\": ]\+\([0-9]\+\),.*$/\1/" <<< "$1" )
+  DOWNLOAD_TARGET=$( $SED_COMMAND "s/^.*$2\": {\"pk[\": ]\+\([0-9]\+\),.*$/\1/" <<< "$1" )
   METADATA_FILE="$EXTENSIONS_PATH/$EXTENSION_UUID/metadata.json"
   [ -f "$METADATA_FILE" ] &&
-  { VERSION_TARGET=$( sed "s/^.*$2\": {\"pk[\": ]\+[0-9]\+[\", ]\+version[\": ]\+\([0-9]\+\)}.*$/\1/" <<< "$1" )
-    VERSION_INSTALLED=$( sed -n "s/^[[:space:]]*\"version[\": ]\+\([0-9]\+\).*$/\1/p" "$METADATA_FILE" )
+  { VERSION_TARGET=$( $SED_COMMAND "s/^.*$2\": {\"pk[\": ]\+[0-9]\+[\", ]\+version[\": ]\+\([0-9]\+\)}.*$/\1/" <<< "$1" )
+    VERSION_INSTALLED=$( $SED_COMMAND -n "s/^[[:space:]]*\"version[\": ]\+\([0-9]\+\).*$/\1/p" "$METADATA_FILE" )
     [[ $VERSION_INSTALLED ]] ||
     { echo -e "\e[0;31mERROR\e[0m: Use your package manager to update this extension" >&2
       return 1; }
@@ -110,8 +128,8 @@ check_version_availability() {
     SELECTED_VERSION="$1"
   done
   [[ ! $SELECTED_VERSION ]] &&
-  { TARGET=$( sed -n "s/^3\.\([0-9]\+\).*$/\1/p" <<< "$1" )
-    LATEST=$( sed -n "s/^3\.\([0-9]\+\).*$/\1/p" <<< "${EXTENSION_VERSIONS[0]}" )
+  { TARGET=$( $SED_COMMAND -n "s/^3\.\([0-9]\+\).*$/\1/p" <<< "$1" )
+    LATEST=$( $SED_COMMAND -n "s/^3\.\([0-9]\+\).*$/\1/p" <<< "${EXTENSION_VERSIONS[0]}" )
     [[ ${1%%\.*} == ${EXTENSION_VERSIONS[0]%%\.*} ]] &&
     [[ $TARGET -gt $LATEST ]] &&
     [[ $LATEST -gt 20 ]] &&
@@ -153,18 +171,18 @@ get_other_version() {
 }
 
 extract_info() {
-  EXTENSION_NAME=$( sed 's/^.*\"name\"[: \"]*\([^\"]*\).*$/\1/' <<< "$1" )
-  EXTENSION_DESCRIPTION=$( sed 's/^.*\"description\": \"//g' <<< "$1" |
-                           sed 's/\", \"[a-z]\+\".*$//g' |
-                           sed 's/\\\"/\"/g' )
-  EXTENSION_CREATOR=$( sed 's/^.*\"creator\"[: \"]*\([^\"]*\).*$/\1/' <<< "$1" )
-  EXTENSION_UUID=$( sed 's/^.*\"uuid\"[: \"]*\([^\"]*\).*$/\1/' <<< "$1" )
-  EXTENSION_ID=$( sed 's/^.*\"pk\"[: \"]*\([^\"]*\),.*$/\1/' <<< "$1" )
-  EXTENSION_LINK=$( sed 's/^.*\"link\"[: \"]*\([^\"]*\).*$/\1/' <<< "$1" )
+  EXTENSION_NAME=$( $SED_COMMAND 's/^.*\"name\"[: \"]*\([^\"]*\).*$/\1/' <<< "$1" )
+  EXTENSION_DESCRIPTION=$( $SED_COMMAND 's/^.*\"description\": \"//g' <<< "$1" |
+                           $SED_COMMAND 's/\", \"[a-z]\+\".*$//g' |
+                           $SED_COMMAND 's/\\\"/\"/g' )
+  EXTENSION_CREATOR=$( $SED_COMMAND 's/^.*\"creator\"[: \"]*\([^\"]*\).*$/\1/' <<< "$1" )
+  EXTENSION_UUID=$( $SED_COMMAND 's/^.*\"uuid\"[: \"]*\([^\"]*\).*$/\1/' <<< "$1" )
+  EXTENSION_ID=$( $SED_COMMAND 's/^.*\"pk\"[: \"]*\([^\"]*\),.*$/\1/' <<< "$1" )
+  EXTENSION_LINK=$( $SED_COMMAND 's/^.*\"link\"[: \"]*\([^\"]*\).*$/\1/' <<< "$1" )
   EXTENSION_URL=$( grep "download_url" <<< "$1" |
-                   sed 's/^.*\"download_url\"[: \"]*\([^\"]*\).*$/\1/' )
-  EXTENSION_VERSIONS=($( sed 's/[\"]*:[ ]*{[\"]*pk[\"]*:/\n/g' <<< "$1" |
-                         sed '$ d' | sed 's/^.*\"//g' | sort -rV ))
+                   $SED_COMMAND 's/^.*\"download_url\"[: \"]*\([^\"]*\).*$/\1/' )
+  EXTENSION_VERSIONS=($( $SED_COMMAND 's/[\"]*:[ ]*{[\"]*pk[\"]*:/\n/g' <<< "$1" |
+                         $SED_COMMAND '$ d' | $SED_COMMAND 's/^.*\"//g' | sort -rV ))
 }
 
 download_info() {
@@ -197,7 +215,7 @@ download_info() {
 
 extract_comments() {
   [[ $# -ge 1 ]] && echo -e "[$1]\n\n"
-  IFS=$'\n' read -d '' -r -a COMMENTS_QUERY <<< "$( echo $EXTENSION_COMMENTS | cut -f1 --complement -d"[" | sed 's/, {/\n/g' )"
+  IFS=$'\n' read -d '' -r -a COMMENTS_QUERY <<< "$( echo $EXTENSION_COMMENTS | cut -f1 --complement -d"[" | $SED_COMMAND 's/, {/\n/g' )"
 
   for COMMENT in "${COMMENTS_QUERY[@]}"; do
     LINE=$( perl -ne '
@@ -266,10 +284,10 @@ EOF
 
 load_content() {
   unset SEARCH_CONTENT
-  PAGES=$( sed 's/^.*numpages[\": ]*\([^\"]*\),.*$/\1/' <<< "$EXTENSION_INFO" )
-  TOTAL=$( sed 's/^.*total[\": ]*\([^\"]*\),.*$/\1/' <<< "$EXTENSION_INFO" )
+  PAGES=$( $SED_COMMAND 's/^.*numpages[\": ]*\([^\"]*\),.*$/\1/' <<< "$EXTENSION_INFO" )
+  TOTAL=$( $SED_COMMAND 's/^.*total[\": ]*\([^\"]*\),.*$/\1/' <<< "$EXTENSION_INFO" )
   SEARCH_CONTENT=$( echo "Displaying $TOTAL item(s). Page $PAGE_NUM of $PAGES.\n")
-  IFS=$'\n' read -d '' -r -a EXTENSIONS_QUERY <<< "$( echo $EXTENSION_INFO | cut -f1 --complement -d"[" | sed 's/{[\"]*shell_version_map[\"]*:/\n/g' )"
+  IFS=$'\n' read -d '' -r -a EXTENSIONS_QUERY <<< "$( echo $EXTENSION_INFO | cut -f1 --complement -d"[" | $SED_COMMAND 's/{[\"]*shell_version_map[\"]*:/\n/g' )"
 
   COUNTER=0
   for EXTENSION in "${EXTENSIONS_QUERY[@]}"; do
@@ -357,7 +375,7 @@ interactive_search() {
         fi
       done
     elif [[ $COMMAND =~ ^p( )*[0-9]+$ ]]; then
-      PAGE="$( echo ${COMMAND:1} | sed 's/^0*//' )"
+      PAGE="$( echo ${COMMAND:1} | $SED_COMMAND 's/^0*//' )"
       if [[ $PAGE -le $PAGES ]]; then
         PAGE_NUM="${COMMAND:1}"
         [[ $SEARCH_STRING ]] &&
@@ -453,7 +471,7 @@ do
 done
 
 GNOME_VERSION=$( gnome-shell --version 2> /dev/null |
-                 sed -n "s/^.* \([0-9]\+\.[0-9]\+\).*$/\1/p" )
+                 $SED_COMMAND -n "s/^.* \([0-9]\+\.[0-9]\+\).*$/\1/p" )
 if [[ "${GNOME_VERSION%%"."*}" -ge 40 ]]; then
   GNOME_VERSION="${GNOME_VERSION%%"."*}"
 fi
@@ -549,7 +567,7 @@ elif [ ${#INSTALL_ARRAY[@]} -gt 0 ]; then
   done
 elif [[ $UPDATE_MODE ]]; then
   UPDATE_LIST=($( find -L "$EXTENSIONS_PATH" -maxdepth 2 -name "metadata.json" \
-                       -exec sed -n "s/^[[:space:]]*\"uuid[\": ]\+\(.*\)\".*$/\1/p" {} \; ))
+                       -exec $SED_COMMAND -n "s/^[[:space:]]*\"uuid[\": ]\+\(.*\)\".*$/\1/p" {} \; ))
   for EXTENSION in ${UPDATE_LIST[@]}; do
     IS_GIT_DIR=$( type git > /dev/null 2> /dev/null &&
                   git -C "$EXTENSIONS_PATH/$EXTENSION/" rev-parse --is-inside-work-tree 2> /dev/null )
@@ -575,7 +593,7 @@ elif [[ $UPDATE_MODE ]]; then
                     "Extension not found" \
                     "The search page for \"$SEARCH_STRING\"" \
                     "Failed to obtain extension info" &&
-      { IFS=$'\n' read -d '' -r -a EXTENSIONS_QUERY <<< "$( echo $EXTENSION_INFO | cut -f1 --complement -d"[" | sed 's/{[\"]*shell_version_map[\"]*:/\n/g' )"
+      { IFS=$'\n' read -d '' -r -a EXTENSIONS_QUERY <<< "$( echo $EXTENSION_INFO | cut -f1 --complement -d"[" | $SED_COMMAND 's/{[\"]*shell_version_map[\"]*:/\n/g' )"
         unset EXTENSION_INFO
         for SEARCH_RESULT in "${EXTENSIONS_QUERY[@]}"; do
           extract_info "$SEARCH_RESULT"
@@ -602,3 +620,4 @@ if [[ ${#INSTALLED[@]} -gt 0 ]] || [[ ${#UPDATED[@]} -gt 0 ]]; then
     echo "You may have to restart GNOME Shell."
   fi
 fi
+
